@@ -1,0 +1,15 @@
+{
+  "kaos": 45000,
+  "screen_per_warna": 60000,
+  "film_per_warna": 15000,
+  "setup_per_warna": 25000,
+  "tinta_per_kg": 220000,
+  "gram_tinta_per_warna": 4.0,
+  "upah_per_tarikan": 1200,
+  "flash_per_pcs": 500,
+  "curing_per_pcs": 700,
+  "packing_per_pcs": 1500,
+  "overhead_persen": 10.0,
+  "margin_persen": 30.0,
+  "reject_persen": 3.0
+}
