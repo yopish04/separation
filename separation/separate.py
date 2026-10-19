@@ -34,6 +34,7 @@ class Channel:
     angle: float | None = None
     is_underbase: bool = False
     meta: dict = field(default_factory=dict)
+    tone: np.ndarray | None = None  # float (H, W) 0..1 sebelum halftone (simulated process)
 
     @property
     def hex(self) -> str:
@@ -61,9 +62,8 @@ class Separation:
         w, h = self.size
         base = np.array(self.garment if self.garment else (255, 255, 255), dtype=np.uint8)
         out = np.broadcast_to(base, (h, w, 3)).copy()
+        # Dicat sesuai urutan cetak; underbase yang tidak tertutup warna lain ikut terlihat putih.
         for ch in self.channels:
-            if ch.is_underbase:
-                continue  # underbase tertutup warna di atasnya
             out[ch.ink] = ch.rgb
         return Image.fromarray(out, "RGB")
 

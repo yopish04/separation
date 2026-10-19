@@ -9,6 +9,7 @@ from .film import save_films
 from .quote import Costs, format_rp, price_breaks, quote
 from .report import build_report, report_markdown
 from .separate import Options, separate
+from .simprocess import SimOptions, simulate, tone_preview
 
 
 def _cmd_pisah(a) -> int:
@@ -40,6 +41,52 @@ def _cmd_pisah(a) -> int:
     print(md)
     print("File:")
     for f in [*files, preview, out / "laporan.json", out / "laporan.md"]:
+        print(f"  {f}")
+    return 0
+
+
+def _parse_palette(text: str) -> list[tuple[str, str]]:
+    """'Merah=#d0202e,Kuning=#f6c700' atau '#d0202e,#f6c700'."""
+    out = []
+    for i, item in enumerate(x.strip() for x in text.split(",") if x.strip()):
+        name, _, hexv = item.rpartition("=")
+        out.append((name.strip() or f"Warna {i + 1}", hexv.strip()))
+    return out
+
+
+def _cmd_simulasi(a) -> int:
+    opts = SimOptions(
+        garment=a.kaos,
+        palette=_parse_palette(a.palet) if a.palet else None,
+        n_colors=a.warna,
+        dpi=a.dpi,
+        width_cm=a.lebar_cm,
+        lpi=a.lpi,
+        angle_mode=a.sudut,
+        angle_start=a.sudut_awal,
+        dot=a.dot,
+        method=a.metode,
+        grain_px=a.grain,
+        choke_px=a.choke,
+        highlight=not a.tanpa_highlight,
+        despeckle=a.despeckle,
+        space=a.ruang,
+    )
+    sep = simulate(a.input, opts)
+    out = Path(a.output)
+    out.mkdir(parents=True, exist_ok=True)
+
+    files = save_films(sep, {}, out, mirror=a.mirror)
+    sep.preview().save(out / "preview.png")
+    tone_preview(sep).save(out / "preview_tone.png")
+    rep = build_report(sep, prints=a.qty)
+    (out / "laporan.json").write_text(json.dumps(rep, indent=2, ensure_ascii=False))
+    md = report_markdown(rep)
+    (out / "laporan.md").write_text(md)
+
+    print(md)
+    print("File:")
+    for f in [*files, out / "preview.png", out / "preview_tone.png", out / "laporan.json", out / "laporan.md"]:
         print(f"  {f}")
     return 0
 
@@ -90,6 +137,29 @@ def main(argv=None) -> int:
     s.add_argument("--mirror", action="store_true", help="Cetak film terbalik (emulsi-down)")
     s.add_argument("--qty", type=int, default=1, help="Jumlah cetak untuk estimasi tinta")
     s.set_defaults(func=_cmd_pisah)
+
+    m = sub.add_parser("simulasi", help="Separasi simulated process (foto/gradasi di kaos gelap)")
+    m.add_argument("input", help="File desain (PNG/JPG, resolusi cetak)")
+    m.add_argument("-o", "--output", default="hasil_simulasi")
+    m.add_argument("--kaos", default="#000000", help="Warna kaos hex (default hitam)")
+    m.add_argument("--palet", help="Tinta, mis. 'Merah=#d0202e,Kuning=#f6c700,Cyan=#0a86c0'")
+    m.add_argument("-n", "--warna", type=int, help="Pilih N warna tinta otomatis dari gambar")
+    m.add_argument("--dpi", type=float, default=300)
+    m.add_argument("--lebar-cm", type=float, help="Resize desain ke lebar cetak (cm)")
+    m.add_argument("--lpi", type=float, default=55)
+    m.add_argument("--sudut", choices=["bertingkat", "sama"], default="bertingkat",
+                   help="sama = semua film satu sudut; bertingkat = +30° per film (23/53/83/...)")
+    m.add_argument("--sudut-awal", type=float, default=22.5)
+    m.add_argument("--dot", choices=["elips", "bulat"], default="elips")
+    m.add_argument("--metode", choices=["halftone", "index"], default="halftone")
+    m.add_argument("--grain", type=int, default=2, help="Ukuran titik index (piksel)")
+    m.add_argument("--choke", type=int, default=2, help="Choke underbase (piksel)")
+    m.add_argument("--tanpa-highlight", action="store_true", help="Tanpa screen highlight putih")
+    m.add_argument("--ruang", choices=["gamma", "linear"], default="gamma", help="Ruang hitung campuran warna")
+    m.add_argument("--despeckle", type=int, default=0)
+    m.add_argument("--mirror", action="store_true")
+    m.add_argument("--qty", type=int, default=1)
+    m.set_defaults(func=_cmd_simulasi)
 
     h = sub.add_parser("harga", help="Hitung HPP dan harga jual")
     h.add_argument("--warna", default="1", help="Warna per lokasi, mis. '4,1' (depan 4, belakang 1)")

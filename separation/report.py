@@ -10,6 +10,8 @@ _DEPOSIT_G_PER_CM2 = {110: 0.0060, 125: 0.0052, 156: 0.0042, 180: 0.0036, 200: 0
 
 
 def recommend_mesh(ch: Channel, halftone: bool, lpi: float) -> int:
+    if "mesh" in ch.meta:
+        return ch.meta["mesh"]
     if ch.is_underbase:
         return 156 if halftone else 110
     if halftone:
@@ -47,7 +49,7 @@ def build_report(sep: Separation, prints: int = 1) -> dict:
         "ukuran_cetak_cm": [round(w_cm, 1), round(h_cm, 1)],
         "dpi": sep.dpi,
         "warna_kaos": None if sep.garment is None else "#%02x%02x%02x" % sep.garment,
-        "mode": f"halftone {o.lpi:g} LPI" if o.halftone else "spot solid",
+        "mode": getattr(o, "label", None) or (f"halftone {o.lpi:g} LPI" if o.halftone else "spot solid"),
         "jumlah_screen": len(sep.channels),
         "jumlah_cetak": prints,
         "channel": rows,

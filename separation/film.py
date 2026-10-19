@@ -41,6 +41,8 @@ def render_film(sep: Separation, ch: Channel, mirror: bool = False, label: str =
 
     font = _font(max(10, int(3 * mm)))
     text = label or f"{ch.meta.get('urutan', '?')}. {ch.name} {ch.hex}"
+    if not label and ch.meta.get("info"):
+        text += f" · {ch.meta['info']}"
     draw.text((margin, int(margin * 0.15)), text, fill=0, font=font)
     return film
 
@@ -54,6 +56,12 @@ def save_films(sep: Separation, labels: dict[int, str], out_dir, mirror: bool = 
         film.save(path, dpi=(sep.dpi, sep.dpi))
         out.append(path)
         pages.append(film.convert("1"))
+        if ch.tone is not None:
+            # Channel grayscale (hitam = tinta) untuk diedit di Photoshop/GIMP sebelum di-halftone ulang.
+            tone = Image.fromarray((255 - np.clip(ch.tone, 0, 1) * 255).round().astype(np.uint8), "L")
+            tpath = out_dir / f"tone_{ch.meta['urutan']:02d}_{ch.name.lower().replace(' ', '_')}.png"
+            tone.save(tpath, dpi=(sep.dpi, sep.dpi))
+            out.append(tpath)
     if pages:
         pdf = out_dir / "films.pdf"
         pages[0].save(pdf, save_all=True, append_images=pages[1:], resolution=sep.dpi)
